@@ -34,8 +34,8 @@
 
     // 言語辞書（多言語対応の土台）
     const i18n = {
-      ja: { canvas: "キャンバス", archive: "履歴", add: "生成", settings: "設定", lang: "言語", themes: "テーマ", howto: "使い方", today: "TODAY ONLY", full: "⚠️ FULL" },
-      en: { canvas: "CANVAS", archive: "HISTORY", add: "Create", settings: "Settings", lang: "Language", themes: "Themes", howto: "How to", today: "TODAY ONLY", full: "⚠️ FULL" }
+      ja: { canvas: "キャンバス", archive: "履歴", add: "生成", settings: "設定", lang: "言語", themes: "テーマ", howto: "使い方", today: "TODAY ONLY", full: "⚠️ FULL", placeholder: "新しいタスクを生成..." },
+      en: { canvas: "CANVAS", archive: "HISTORY", add: "Create", settings: "Settings", lang: "Language", themes: "Themes", howto: "How to", today: "TODAY ONLY", full: "⚠️ FULL", placeholder: "Create a new task..." }
     };
 
     function App() {
@@ -212,13 +212,13 @@
       const activeTask = tasks.find(t => t.id === activeTaskId);
 
       return (
-        <div className="min-h-screen flex flex-col">
+        <div className="min-h-screen flex flex-col relative">
           {/* --- ハンバーガーメニュー (Drawer) --- */}
           {isMenuOpen && (
             <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-sm" onClick={() => setIsMenuOpen(false)}>
-              <div className="w-72 h-full bg-slate-900 border-r border-slate-800 p-6 drawer-open" onClick={e => e.stopPropagation()}>
+              <div className="w-72 h-full bg-slate-900 border-r border-slate-800 p-6 drawer-open flex flex-col" onClick={e => e.stopPropagation()}>
                 <h2 className="text-xl font-black mb-8 text-indigo-400">Menu</h2>
-                <nav className="space-y-6">
+                <nav className="space-y-6 flex-1">
                   <div className="space-y-2">
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t.lang}</p>
                     <div className="flex gap-2">
@@ -232,6 +232,14 @@
                     <span className="text-[10px] bg-indigo-900 text-indigo-300 px-2 py-0.5 rounded-full">Premium 🔒</span>
                   </button>
                 </nav>
+                
+                {/* 𝕏 / Contact リンク (とりあえずGitHubへ飛ばす) */}
+                <div className="mt-auto pt-6 border-t border-slate-800">
+                  <a href="https://github.com/matte-navy" target="_blank" rel="noopener noreferrer" className="flex justify-between items-center w-full py-2 text-sm font-bold text-slate-500 hover:text-white transition-colors">
+                    <span>𝕏 Support / Contact</span>
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M13.6823 10.6218L20.2391 3H18.6854L12.9921 9.61788L8.44486 3H3.2002L10.0765 13.0074L3.2002 21H4.75404L10.7663 14.0113L15.5685 21H20.8131L13.6819 10.6218H13.6823ZM11.5541 13.0956L10.8574 12.0991L5.31391 4.16971H7.70053L12.1742 10.5689L12.8709 11.5655L18.6861 19.8835H16.2995L11.5541 13.096V13.0956Z" /></svg>
+                  </a>
+                </div>
               </div>
             </div>
           )}
@@ -265,15 +273,20 @@
           <main className="flex-1 p-4 max-w-7xl mx-auto w-full space-y-6">
             {activeTab === 'canvas' && (
               <>
+                {/* 画面外タップで閉じるための透明な幕 */}
+                {isInputFocused && (
+                  <div className="fixed inset-0 z-30" onClick={() => setIsInputFocused(false)}></div>
+                )}
+                
                 {/* --- スマート入力欄 (自動展開 & スケジュール完全復元) --- */}
-                <div className={`bg-slate-900/50 rounded-[2rem] border transition-all duration-300 overflow-hidden max-w-3xl mx-auto ${isInputFocused ? 'border-indigo-500/50 shadow-2xl backdrop-blur-md bg-slate-900/90' : 'border-slate-900 shadow-lg'}`}>
+                <div className={`relative z-40 bg-slate-900/50 rounded-[2rem] border transition-all duration-300 overflow-hidden max-w-3xl mx-auto ${isInputFocused ? 'border-indigo-500/50 shadow-2xl backdrop-blur-md bg-slate-900/90' : 'border-slate-900 shadow-lg'}`}>
                   <div className="flex items-center px-4 sm:px-6 py-4">
                     <input 
                       type="text" 
                       value={title} 
                       onChange={e=>setTitle(e.target.value)} 
                       onFocus={()=>setIsInputFocused(true)}
-                      placeholder="新しいタスクを生成..." 
+                      placeholder={t.placeholder}
                       className="bg-transparent flex-1 text-base sm:text-lg font-bold outline-none placeholder:text-slate-700 w-full"
                       onKeyPress={e => e.key === 'Enter' && addParentTask()}
                     />
