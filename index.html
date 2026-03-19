@@ -1,529 +1,528 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Progress Nest v2.5</title>
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Nest">
-  
-  <link rel="apple-touch-icon" href="./icon.png">
-  <link rel="icon" type="image/png" href="./icon.png">
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="Progress Nest">
-  <meta property="og:description" content="思考を整理する、完全オフラインのタスク・キャンバス">
-  <meta property="og:image" content="./icon.png">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:image" content="./icon.png">
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-  <style>
-    @keyframes slap { 0% { transform: scale(5) rotate(30deg); opacity: 0; } 70% { transform: scale(0.9) rotate(-5deg); opacity: 1; } 100% { transform: scale(1) rotate(var(--rot)); opacity: 1; } }
-    .animate-slap { animation: slap 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; opacity: 0; }
-    .crack-overlay { background-image: url('https://www.transparenttextures.com/patterns/cracked-glass-panel.png'); pointer-events: none; mix-blend-mode: overlay; }
-    @keyframes slideIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }
-    .drawer-open { animation: slideIn 0.3s ease-out forwards; }
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    * { -webkit-tap-highlight-color: transparent; outline: none; }
-    /* ✨ 1本指でのスクロールを許可し、JSでピンチを処理する ✨ */
-    #canvas-root { touch-action: pan-y; }
-    .task-card { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Progress Nest v2.5</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Nest">
+  
+  <link rel="apple-touch-icon" href="./icon.png">
+  <link rel="icon" type="image/png" href="./icon.png">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Progress Nest">
+  <meta property="og:description" content="思考を整理する、完全オフラインのタスク・キャンバス">
+  <meta property="og:image" content="./icon.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="./icon.png">
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <style>
+    @keyframes slap { 0% { transform: scale(5) rotate(30deg); opacity: 0; } 70% { transform: scale(0.9) rotate(-5deg); opacity: 1; } 100% { transform: scale(1) rotate(var(--rot)); opacity: 1; } }
+    .animate-slap { animation: slap 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; opacity: 0; }
+    .crack-overlay { background-image: url('https://www.transparenttextures.com/patterns/cracked-glass-panel.png'); pointer-events: none; mix-blend-mode: overlay; }
+    @keyframes slideIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+    .drawer-open { animation: slideIn 0.3s ease-out forwards; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    * { -webkit-tap-highlight-color: transparent; outline: none; }
+    /* ✨ 1本指でのスクロールを許可し、JSでピンチを処理する ✨ */
+    #canvas-root { touch-action: pan-y; }
+    .task-card { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+  </style>
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans min-h-screen overflow-x-hidden selection:bg-indigo-500/30">
-  <div id="root"></div>
+  <div id="root"></div>
 
-  <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
 
-    // 言語辞書（多言語対応の土台）
-    const i18n = {
-      ja: { canvas: "キャンバス", archive: "履歴", add: "生成", settings: "設定", lang: "言語", themes: "テーマ", howto: "使い方", today: "TODAY ONLY", full: "⚠️ FULL", placeholder: "新しいタスクを生成..." },
-      en: { canvas: "CANVAS", archive: "HISTORY", add: "Create", settings: "Settings", lang: "Language", themes: "Themes", howto: "How to", today: "TODAY ONLY", full: "⚠️ FULL", placeholder: "Create a new task..." }
-    };
+    // 言語辞書（多言語対応の土台）
+    const i18n = {
+      ja: { canvas: "キャンバス", archive: "履歴", add: "生成", settings: "設定", lang: "言語", themes: "テーマ", howto: "使い方", today: "TODAY ONLY", full: "⚠️ FULL", placeholder: "新しいタスクを生成..." },
+      en: { canvas: "CANVAS", archive: "HISTORY", add: "Create", settings: "Settings", lang: "Language", themes: "Themes", howto: "How to", today: "TODAY ONLY", full: "⚠️ FULL", placeholder: "Create a new task..." }
+    };
 
-    function App() {
-      // --- 新規UI用ステート ---
-      const userLang = navigator.language && navigator.language.startsWith('ja') ? 'ja' : 'en';
-      const [lang, setLang] = useState(userLang);
-      const [isMenuOpen, setIsMenuOpen] = useState(false);
-      const [isInputFocused, setIsInputFocused] = useState(false);
+    function App() {
+      // --- 新規UI用ステート ---
+      const userLang = navigator.language && navigator.language.startsWith('ja') ? 'ja' : 'en';
+      const [lang, setLang] = useState(userLang);
+      const [isMenuOpen, setIsMenuOpen] = useState(false);
+      const [isInputFocused, setIsInputFocused] = useState(false);
 
-      // --- 既存のコアステート（完全復元） ---
-      const [tasks, setTasks] = useState([]);
-      const [activeTab, setActiveTab] = useState('canvas');
-      const [activeTaskId, setActiveTaskId] = useState(null);
-      const [showArchiveAnima, setShowArchiveAnima] = useState(false);
-      const [isEditMode, setIsEditMode] = useState(false);
-      const [zoom, setZoom] = useState(120); 
-      const [newSubText, setNewSubText] = useState('');
-      const [isEditingTitle, setIsEditingTitle] = useState(false);
-      const [showHowto, setShowHowto] = useState(false); 
+      // --- 既存のコアステート（完全復元） ---
+      const [tasks, setTasks] = useState([]);
+      const [activeTab, setActiveTab] = useState('canvas');
+      const [activeTaskId, setActiveTaskId] = useState(null);
+      const [showArchiveAnima, setShowArchiveAnima] = useState(false);
+      const [isEditMode, setIsEditMode] = useState(false);
+      const [zoom, setZoom] = useState(120); 
+      const [newSubText, setNewSubText] = useState('');
+      const [isEditingTitle, setIsEditingTitle] = useState(false);
+      const [showHowto, setShowHowto] = useState(false); 
 
-      const [title, setTitle] = useState('');
-      const [type, setType] = useState('persistent');
-      const [freq, setFreq] = useState('once');
-      const [weight, setWeight] = useState('1');
-      const [selectedDays, setSelectedDays] = useState([]);
-      const [selectedDates, setSelectedDates] = useState([]);
-      const [scheduledDate, setScheduledDate] = useState(new Date().toISOString().split('T')[0]);
-      
-      // Nヶ月/N週間の「N」を保持するステート（初期値は1）
-      const [intervalVal, setIntervalVal] = useState('1');
+      const [title, setTitle] = useState('');
+      const [type, setType] = useState('persistent');
+      const [freq, setFreq] = useState('once');
+      const [weight, setWeight] = useState('1');
+      const [selectedDays, setSelectedDays] = useState([]);
+      const [selectedDates, setSelectedDates] = useState([]);
+      const [scheduledDate, setScheduledDate] = useState(new Date().toISOString().split('T')[0]);
+      
+      // Nヶ月/N週間の「N」を保持するステート（初期値は1）
+      const [intervalVal, setIntervalVal] = useState('1');
 
-      const t = i18n[lang];
+      const t = i18n[lang];
 
-      // ✨ ピンチズーム用のRef (1本指スクロール対応版) ✨
-      const canvasRef = useRef(null);
-      const zoomRef = useRef(zoom);
-      useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+      // ✨ ピンチズーム用のRef (1本指スクロール対応版) ✨
+      const canvasRef = useRef(null);
+      const zoomRef = useRef(zoom);
+      useEffect(() => { zoomRef.current = zoom; }, [zoom]);
 
-      useEffect(() => {
-        const el = canvasRef.current;
-        if (!el) return;
-        let initialDist = 0;
-        let initialZoom = 0;
+      useEffect(() => {
+        const el = canvasRef.current;
+        if (!el) return;
+        let initialDist = 0;
+        let initialZoom = 0;
 
-        const handleTouchStart = (e) => {
-          if (e.touches.length === 2) {
-            e.preventDefault();
-            initialDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
-            initialZoom = zoomRef.current;
-          }
-        };
+        const handleTouchStart = (e) => {
+          if (e.touches.length === 2) {
+            e.preventDefault();
+            initialDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+            initialZoom = zoomRef.current;
+          }
+        };
 
-        const handleTouchMove = (e) => {
-          if (e.touches.length === 2) {
-            e.preventDefault();
-            const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
-            const factor = dist / initialDist;
-            let newZoom = initialZoom * factor;
-            // ✨ 最大サイズを 180 に制限（デカすぎ問題の解消）
-            newZoom = Math.max(60, Math.min(180, newZoom));
-            setZoom(newZoom);
-          }
-        };
+        const handleTouchMove = (e) => {
+          if (e.touches.length === 2) {
+            e.preventDefault();
+            const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+            const factor = dist / initialDist;
+            let newZoom = initialZoom * factor;
+            // ✨ 最大サイズを 180 に制限（デカすぎ問題の解消）
+            newZoom = Math.max(60, Math.min(180, newZoom));
+            setZoom(newZoom);
+          }
+        };
 
-        el.addEventListener('touchstart', handleTouchStart, { passive: false });
-        el.addEventListener('touchmove', handleTouchMove, { passive: false });
-        return () => { el.removeEventListener('touchstart', handleTouchStart); el.removeEventListener('touchmove', handleTouchMove); };
-      }, []);
+        el.addEventListener('touchstart', handleTouchStart, { passive: false });
+        el.addEventListener('touchmove', handleTouchMove, { passive: false });
+        return () => { el.removeEventListener('touchstart', handleTouchStart); el.removeEventListener('touchmove', handleTouchMove); };
+      }, []);
 
-      // ✨ データ読み込み＆移行ロジック（完全復元）
-      useEffect(() => {
-        let saved = localStorage.getItem('nest-v2-data');
-        let lastLogin = localStorage.getItem('nest-v2-login');
+      // ✨ データ読み込み＆移行ロジック（完全復元）
+      useEffect(() => {
+        let saved = localStorage.getItem('nest-v2-data');
+        let lastLogin = localStorage.getItem('nest-v2-login');
 
-        if (!saved) {
-          const oldKeys = ['nest-v19-data', 'nest-v18-data', 'nest-v17-data', 'nest-v16-data'];
-          for (let key of oldKeys) {
-            saved = localStorage.getItem(key);
-            if (saved) {
-              lastLogin = localStorage.getItem(key.replace('-data', '-login'));
-              break; 
-            }
-          }
-        }
+        if (!saved) {
+          const oldKeys = ['nest-v19-data', 'nest-v18-data', 'nest-v17-data', 'nest-v16-data'];
+          for (let key of oldKeys) {
+            saved = localStorage.getItem(key);
+            if (saved) {
+              lastLogin = localStorage.getItem(key.replace('-data', '-login'));
+              break; 
+            }
+          }
+        }
 
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          const today = new Date().toLocaleDateString();
-          if (lastLogin && lastLogin !== today) {
-             setTasks(parsed.map(t => t.type === 'volatile' ? {...t, subTasks: t.subTasks.map(st => ({...st, completed: false}))} : t));
-          } else { setTasks(parsed); }
-          localStorage.setItem('nest-v2-login', today);
-        }
-      }, []);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          const today = new Date().toLocaleDateString();
+          if (lastLogin && lastLogin !== today) {
+             setTasks(parsed.map(t => t.type === 'volatile' ? {...t, subTasks: t.subTasks.map(st => ({...st, completed: false}))} : t));
+          } else { setTasks(parsed); }
+          localStorage.setItem('nest-v2-login', today);
+        }
+      }, []);
 
-      useEffect(() => {
-        localStorage.setItem('nest-v2-data', JSON.stringify(tasks));
-      }, [tasks]);
+      useEffect(() => {
+        localStorage.setItem('nest-v2-data', JSON.stringify(tasks));
+      }, [tasks]);
 
-      const handleFreqChange = (newFreq) => {
-        setFreq(newFreq);
-        const now = new Date();
-        if (newFreq === 'weekly' && selectedDays.length === 0) setSelectedDays([now.getDay()]);
-        if (newFreq === 'monthly' && selectedDates.length === 0) setSelectedDates([now.getDate()]); 
-      };
+      const handleFreqChange = (newFreq) => {
+        setFreq(newFreq);
+        const now = new Date();
+        if (newFreq === 'weekly' && selectedDays.length === 0) setSelectedDays([now.getDay()]);
+        if (newFreq === 'monthly' && selectedDates.length === 0) setSelectedDates([now.getDate()]); 
+      };
 
-      const fireConfetti = () => confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#22d3ee', '#818cf8', '#fbbf24'] });
+      const fireConfetti = () => confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#22d3ee', '#818cf8', '#fbbf24'] });
 
-      const shareCanvas = () => {
-        if (navigator.share) {
-          navigator.share({ title: 'Progress Nest', text: 'My progress map.', url: window.location.href });
-        }
-      };
+      const shareCanvas = () => {
+        if (navigator.share) {
+          navigator.share({ title: 'Progress Nest', text: 'My progress map.', url: window.location.href });
+        }
+      };
 
-      const exportMemory = () => {
-        navigator.clipboard.writeText(JSON.stringify(tasks));
-        alert("記憶（全データ）をコピーしました！");
-      };
+      const exportMemory = () => {
+        navigator.clipboard.writeText(JSON.stringify(tasks));
+        alert("記憶（全データ）をコピーしました！");
+      };
 
-      const importMemory = () => {
-        const raw = prompt("コピーした記憶（JSON）を貼り付けてください：");
-        if (!raw) return;
-        try {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) { setTasks(parsed); alert("記憶が正常に注入されました。"); }
-        } catch(e) { alert("無効な記憶フォーマットです。"); }
-      };
+      const importMemory = () => {
+        const raw = prompt("コピーした記憶（JSON）を貼り付けてください：");
+        if (!raw) return;
+        try {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) { setTasks(parsed); alert("記憶が正常に注入されました。"); }
+        } catch(e) { alert("無効な記憶フォーマットです。"); }
+      };
 
-      const addParentTask = (overrideTitle) => {
-        const finalTitle = overrideTitle || title;
-        if (!finalTitle) return;
-        
-        let finalDays = selectedDays;
-        let finalDates = selectedDates;
-        const now = new Date();
-        if (freq === 'weekly' && finalDays.length === 0) finalDays = [now.getDay()];
-        if (freq === 'monthly' && finalDates.length === 0) finalDates = [now.getDate()];
+      const addParentTask = (overrideTitle) => {
+        const finalTitle = overrideTitle || title;
+        if (!finalTitle) return;
+        
+        let finalDays = selectedDays;
+        let finalDates = selectedDates;
+        const now = new Date();
+        if (freq === 'weekly' && finalDays.length === 0) finalDays = [now.getDay()];
+        if (freq === 'monthly' && finalDates.length === 0) finalDates = [now.getDate()];
 
-        setTasks([...tasks, {
-          id: Date.now().toString(),
-          title: finalTitle, type, freq, weight: parseInt(weight),
-          selectedDays: finalDays, selectedDates: finalDates, scheduledDate,
-          subTasks: [], isArchived: false, phase: 1, lastUpdated: Date.now(),
-          interval: (freq === 'monthly' || freq === 'weekly') ? (parseInt(intervalVal) || 1) : 1, // ✨ 修正: weeklyもNを保存
-          pos: { x: Math.random() * 75 + 5, y: Math.random() * 75 + 5, rot: (Math.random() - 0.5) * 30 }
-        }]);
-        setTitle('');
-        setIsInputFocused(false);
-      };
+        setTasks([...tasks, {
+          id: Date.now().toString(),
+          title: finalTitle, type, freq, weight: parseInt(weight),
+          selectedDays: finalDays, selectedDates: finalDates, scheduledDate,
+          subTasks: [], isArchived: false, phase: 1, lastUpdated: Date.now(),
+          interval: (freq === 'monthly' || freq === 'weekly') ? (parseInt(intervalVal) || 1) : 1, // ✨ 修正: weeklyもNを保存
+          pos: { x: Math.random() * 75 + 5, y: Math.random() * 75 + 5, rot: (Math.random() - 0.5) * 30 }
+        }]);
+        setTitle('');
+        setIsInputFocused(false);
+      };
 
-      const archiveTaskAction = (task) => {
-        if (task.type === 'persistent' && !confirm('この「ファイル」を完了として閉じますか？')) return;
-        fireConfetti();
-        if (navigator.vibrate) navigator.vibrate(50);
-        const updatedSubTasks = task.subTasks.length === 0 ? [{ id: 'auto', text: '完了', completed: true }] : task.subTasks.map(st => ({...st, completed: true}));
-        setTasks(prev => prev.map(t => t.id === task.id ? {...t, subTasks: updatedSubTasks, isArchived: true, archivedAt: new Date().toISOString()} : t));
-        setActiveTaskId(null);
-      };
+      const archiveTaskAction = (task) => {
+        if (task.type === 'persistent' && !confirm('この「ファイル」を完了として閉じますか？')) return;
+        fireConfetti();
+        if (navigator.vibrate) navigator.vibrate(50);
+        const updatedSubTasks = task.subTasks.length === 0 ? [{ id: 'auto', text: '完了', completed: true }] : task.subTasks.map(st => ({...st, completed: true}));
+        setTasks(prev => prev.map(t => t.id === task.id ? {...t, subTasks: updatedSubTasks, isArchived: true, archivedAt: new Date().toISOString()} : t));
+        setActiveTaskId(null);
+      };
 
-      const levelUpTask = (pId) => {
-        fireConfetti();
-        setTasks(tasks.map(t => t.id === pId ? { ...t, phase: t.phase + 1, subTasks: t.subTasks.map(st => ({...st, completed: false})), lastUpdated: Date.now() } : t));
-        setActiveTaskId(null);
-      };
+      const levelUpTask = (pId) => {
+        fireConfetti();
+        setTasks(tasks.map(t => t.id === pId ? { ...t, phase: t.phase + 1, subTasks: t.subTasks.map(st => ({...st, completed: false})), lastUpdated: Date.now() } : t));
+        setActiveTaskId(null);
+      };
 
-      const isVisibleToday = (task) => {
-        if (isEditMode) return true;
-        const now = new Date();
-        const todayStr = now.toISOString().split('T')[0];
-        if (task.freq === 'once') return !task.scheduledDate || todayStr >= task.scheduledDate;
-        if (task.freq === 'daily') return true;
-        
-        // ✨ 修正: weeklyの中でN週間判定を行う（作成時の週から計算）
-        if (task.freq === 'weekly') {
-          const createdDate = new Date(parseInt(task.id));
-          const startOfCreatedWeek = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate() - createdDate.getDay());
-          const startOfCurrentWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
-          const diffTime = startOfCurrentWeek.getTime() - startOfCreatedWeek.getTime();
-          const diffWeeks = Math.round(diffTime / (1000 * 60 * 60 * 24 * 7));
-          const interval = task.interval || 1;
-          return diffWeeks >= 0 && (diffWeeks % interval === 0) && task.selectedDays.includes(now.getDay());
-        }
+      const isVisibleToday = (task) => {
+        if (isEditMode) return true;
+        const now = new Date();
+        const todayStr = now.toISOString().split('T')[0];
+        if (task.freq === 'once') return !task.scheduledDate || todayStr >= task.scheduledDate;
+        if (task.freq === 'daily') return true;
+        
+        // ✨ 修正: weeklyの中でN週間判定を行う（作成時の週から計算）
+        if (task.freq === 'weekly') {
+          const createdDate = new Date(parseInt(task.id));
+          const startOfCreatedWeek = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate() - createdDate.getDay());
+          const startOfCurrentWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+          const diffTime = startOfCurrentWeek.getTime() - startOfCreatedWeek.getTime();
+          const diffWeeks = Math.round(diffTime / (1000 * 60 * 60 * 24 * 7));
+          const interval = task.interval || 1;
+          return diffWeeks >= 0 && (diffWeeks % interval === 0) && task.selectedDays.includes(now.getDay());
+        }
 
-        if (task.freq === 'monthly') { 
-          const createdDate = new Date(parseInt(task.id));
-          const diffMonths = (now.getFullYear() - createdDate.getFullYear()) * 12 + (now.getMonth() - createdDate.getMonth());
-          const interval = task.interval || 1;
-          
-          if (diffMonths >= 0 && (diffMonths % interval === 0)) {
-            // ✨ 修正: 月末の空気を読む「丸め込み」ロジックを追加
-            const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-            const todayDate = now.getDate();
-            
-            return task.selectedDates.some(d => {
-              if (d === todayDate) return true; // 指定日と今日がピタリ一致
-              if (d > lastDayOfMonth && todayDate === lastDayOfMonth) return true; // 指定日が月末を超えていて、今日が月末なら表示
-              return false;
-            });
-          }
-        }        return false;
-      };
+        if (task.freq === 'monthly') { 
+          const createdDate = new Date(parseInt(task.id));
+          const diffMonths = (now.getFullYear() - createdDate.getFullYear()) * 12 + (now.getMonth() - createdDate.getMonth());
+          const interval = task.interval || 1;
+          
+          if (diffMonths >= 0 && (diffMonths % interval === 0)) {
+            // ✨ 修正: 月末の空気を読む「丸め込み」ロジックを追加
+            const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+            const todayDate = now.getDate();
+            
+            return task.selectedDates.some(d => {
+              if (d === todayDate) return true; // 指定日と今日がピタリ一致
+              if (d > lastDayOfMonth && todayDate === lastDayOfMonth) return true; // 指定日が月末を超えていて、今日が月末なら表示
+              return false;
+            });
+          }
+        }        return false;
+      };
 
-      const canvasTasks = tasks.filter(t => !t.isArchived && isVisibleToday(t));
-      const archivedTasks = tasks.filter(t => t.isArchived);
-      const activeTask = tasks.find(t => t.id === activeTaskId);
+      const canvasTasks = tasks.filter(t => !t.isArchived && isVisibleToday(t));
+      const archivedTasks = tasks.filter(t => t.isArchived);
+      const activeTask = tasks.find(t => t.id === activeTaskId);
 
-      return (
-        <div className="min-h-screen flex flex-col relative">
-          {/* --- ハンバーガーメニュー (Drawer) --- */}
-          {isMenuOpen && (
-            <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-sm" onClick={() => setIsMenuOpen(false)}>
-              <div className="w-72 h-full bg-slate-900 border-r border-slate-800 p-6 drawer-open flex flex-col" onClick={e => e.stopPropagation()}>
-                <h2 className="text-xl font-black mb-8 text-indigo-400">Menu</h2>
-                <nav className="space-y-6 flex-1">
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t.lang}</p>
-                    <div className="flex gap-2">
-                      <button onClick={()=>setLang('ja')} className={`flex-1 py-2 rounded-lg border ${lang==='ja'?'border-indigo-500 text-indigo-400':'border-slate-800 text-slate-600'}`}>JP</button>
-                      <button onClick={()=>setLang('en')} className={`flex-1 py-2 rounded-lg border ${lang==='en'?'border-indigo-500 text-indigo-400':'border-slate-800 text-slate-600'}`}>EN</button>
-                    </div>
-                  </div>
-                  <button onClick={() => {setShowHowto(true); setIsMenuOpen(false);}} className="w-full text-left py-3 border-b border-slate-800 text-sm font-bold text-slate-300 hover:text-white">🚀 {t.howto}</button>
-                  <button className="w-full text-left py-3 border-b border-slate-800 text-sm font-bold text-slate-300 hover:text-white flex justify-between items-center">
-                    <span>🎨 {t.themes}</span>
-                    <span className="text-[10px] bg-indigo-900 text-indigo-300 px-2 py-0.5 rounded-full">Premium 🔒</span>
-                  </button>
-                </nav>
-                
-                {/* 𝕏 / Contact リンク (とりあえずGitHubへ飛ばす) */}
-                <div className="mt-auto pt-6 border-t border-slate-800">
-                  <a href="https://github.com/matte-navy" target="_blank" rel="noopener noreferrer" className="flex justify-between items-center w-full py-2 text-sm font-bold text-slate-500 hover:text-white transition-colors">
-                    <span>𝕏 Support / Contact</span>
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M13.6823 10.6218L20.2391 3H18.6854L12.9921 9.61788L8.44486 3H3.2002L10.0765 13.0074L3.2002 21H4.75404L10.7663 14.0113L15.5685 21H20.8131L13.6819 10.6218H13.6823ZM11.5541 13.0956L10.8574 12.0991L5.31391 4.16971H7.70053L12.1742 10.5689L12.8709 11.5655L18.6861 19.8835H16.2995L11.5541 13.096V13.0956Z" /></svg>
-                  </a>
-                </div>
-              </div>
-            </div>
-          )}
+      return (
+        <div className="min-h-screen flex flex-col relative">
+          {/* --- ハンバーガーメニュー (Drawer) --- */}
+          {isMenuOpen && (
+            <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-sm" onClick={() => setIsMenuOpen(false)}>
+              <div className="w-72 h-full bg-slate-900 border-r border-slate-800 p-6 drawer-open flex flex-col" onClick={e => e.stopPropagation()}>
+                <h2 className="text-xl font-black mb-8 text-indigo-400">Menu</h2>
+                <nav className="space-y-6 flex-1">
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t.lang}</p>
+                    <div className="flex gap-2">
+                      <button onClick={()=>setLang('ja')} className={`flex-1 py-2 rounded-lg border ${lang==='ja'?'border-indigo-500 text-indigo-400':'border-slate-800 text-slate-600'}`}>JP</button>
+                      <button onClick={()=>setLang('en')} className={`flex-1 py-2 rounded-lg border ${lang==='en'?'border-indigo-500 text-indigo-400':'border-slate-800 text-slate-600'}`}>EN</button>
+                    </div>
+                  </div>
+                  <button onClick={() => {setShowHowto(true); setIsMenuOpen(false);}} className="w-full text-left py-3 border-b border-slate-800 text-sm font-bold text-slate-300 hover:text-white">🚀 {t.howto}</button>
+                  <button className="w-full text-left py-3 border-b border-slate-800 text-sm font-bold text-slate-300 hover:text-white flex justify-between items-center">
+                    <span>🎨 {t.themes}</span>
+                    <span className="text-[10px] bg-indigo-900 text-indigo-300 px-2 py-0.5 rounded-full">Premium 🔒</span>
+                  </button>
+                </nav>
+                
+                {/* 𝕏 / Contact リンク (とりあえずGitHubへ飛ばす) */}
+                <div className="mt-auto pt-6 border-t border-slate-800">
+                  <a href="https://github.com/matte-navy" target="_blank" rel="noopener noreferrer" className="flex justify-between items-center w-full py-2 text-sm font-bold text-slate-500 hover:text-white transition-colors">
+                    <span>𝕏 Support / Contact</span>
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M13.6823 10.6218L20.2391 3H18.6854L12.9921 9.61788L8.44486 3H3.2002L10.0765 13.0074L3.2002 21H4.75404L10.7663 14.0113L15.5685 21H20.8131L13.6819 10.6218H13.6823ZM11.5541 13.0956L10.8574 12.0991L5.31391 4.16971H7.70053L12.1742 10.5689L12.8709 11.5655L18.6861 19.8835H16.2995L11.5541 13.096V13.0956Z" /></svg>
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
 
-          {/* --- Header --- */}
-          <header className="p-4 flex flex-col md:flex-row items-center justify-between border-b border-slate-900 sticky top-0 bg-slate-950/80 backdrop-blur-md z-40 gap-4">
-            <div className="flex items-center w-full md:w-auto justify-between">
-              <div className="flex items-center">
-                <button onClick={() => setIsMenuOpen(true)} className="p-2 hover:bg-slate-900 rounded-xl transition-colors mr-2">
-                  <div className="w-6 h-0.5 bg-slate-300 mb-1.5"></div>
-                  <div className="w-6 h-0.5 bg-slate-300 mb-1.5"></div>
-                  <div className="w-6 h-0.5 bg-slate-300"></div>
-                </button>
-                <h1 className="text-xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-indigo-500 to-amber-500 flex-1">Progress Nest</h1>
-              </div>
-              <button onClick={shareCanvas} className="p-2 opacity-50 hover:opacity-100 transition-opacity md:hidden">
-                <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
-              </button>
-            </div>
-            <div className="flex items-center gap-2 w-full md:w-auto justify-center">
-              <div className="flex bg-slate-900 rounded-full p-1 border border-slate-800">
-                 <button onClick={()=>setActiveTab('canvas')} className={`px-6 py-1.5 rounded-full text-xs font-black transition-all ${activeTab==='canvas'?'bg-slate-700 text-white shadow-lg':'text-slate-500'}`}>{t.canvas}</button>
-                 <button onClick={() => { setActiveTab('archive'); setShowArchiveAnima(false); setTimeout(()=>setShowArchiveAnima(true),50); }} className={`px-6 py-1.5 rounded-full text-xs font-black transition-all ${activeTab==='archive'?'bg-slate-700 text-white shadow-lg':'text-slate-500'}`}>{t.archive}</button>
-              </div>
-              <button onClick={shareCanvas} className="hidden md:block p-2 opacity-50 hover:opacity-100 transition-opacity ml-2">
-                <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
-              </button>
-            </div>
-          </header>
+          {/* --- Header --- */}
+          <header className="p-4 flex flex-col md:flex-row items-center justify-between border-b border-slate-900 sticky top-0 bg-slate-950/80 backdrop-blur-md z-40 gap-4">
+            <div className="flex items-center w-full md:w-auto justify-between">
+              <div className="flex items-center">
+                <button onClick={() => setIsMenuOpen(true)} className="p-2 hover:bg-slate-900 rounded-xl transition-colors mr-2">
+                  <div className="w-6 h-0.5 bg-slate-300 mb-1.5"></div>
+                  <div className="w-6 h-0.5 bg-slate-300 mb-1.5"></div>
+                  <div className="w-6 h-0.5 bg-slate-300"></div>
+                </button>
+                <h1 className="text-xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-indigo-500 to-amber-500 flex-1">Progress Nest</h1>
+              </div>
+              <button onClick={shareCanvas} className="p-2 opacity-50 hover:opacity-100 transition-opacity md:hidden">
+                <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+              </button>
+            </div>
+            <div className="flex items-center gap-2 w-full md:w-auto justify-center">
+              <div className="flex bg-slate-900 rounded-full p-1 border border-slate-800">
+                 <button onClick={()=>setActiveTab('canvas')} className={`px-6 py-1.5 rounded-full text-xs font-black transition-all ${activeTab==='canvas'?'bg-slate-700 text-white shadow-lg':'text-slate-500'}`}>{t.canvas}</button>
+                 <button onClick={() => { setActiveTab('archive'); setShowArchiveAnima(false); setTimeout(()=>setShowArchiveAnima(true),50); }} className={`px-6 py-1.5 rounded-full text-xs font-black transition-all ${activeTab==='archive'?'bg-slate-700 text-white shadow-lg':'text-slate-500'}`}>{t.archive}</button>
+              </div>
+              <button onClick={shareCanvas} className="hidden md:block p-2 opacity-50 hover:opacity-100 transition-opacity ml-2">
+                <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+              </button>
+            </div>
+          </header>
 
-          <main className="flex-1 p-4 max-w-7xl mx-auto w-full space-y-6">
-            {activeTab === 'canvas' && (
-              <>
-                {isInputFocused && (
-                  <div className="fixed inset-0 z-30" onClick={() => setIsInputFocused(false)}></div>
-                )}
-                
-                <div className={`relative z-40 bg-slate-900/50 rounded-[2rem] border transition-all duration-300 overflow-hidden max-w-3xl mx-auto ${isInputFocused ? 'border-indigo-500/50 shadow-2xl backdrop-blur-md bg-slate-900/90' : 'border-slate-900 shadow-lg'}`}>
-                  <div className="flex items-center px-4 sm:px-6 py-4">
-                    <input 
-                      type="text" 
-                      value={title} 
-                      onChange={e=>setTitle(e.target.value)} 
-                      onFocus={()=>setIsInputFocused(true)}
-                      placeholder={t.placeholder}
-                      className="bg-transparent flex-1 text-base sm:text-lg font-bold outline-none placeholder:text-slate-700 w-full"
-                      onKeyPress={e => e.key === 'Enter' && addParentTask()}
-                    />
-                    <button onClick={() => addParentTask()} className="ml-2 sm:ml-4 bg-indigo-600 text-white px-4 sm:px-6 py-2 rounded-2xl font-black text-xs hover:bg-indigo-500 active:scale-95 transition-all whitespace-nowrap">
-                      {t.add}
-                    </button>
-                  </div>
-                  
-                  {isInputFocused && (
-                    <div className="px-6 pb-6 space-y-4 animate-in slide-in-from-top-2 border-t border-slate-800/50 mt-2 pt-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-3">
-                          <label className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Type & Size</label>
-                          <div className="flex gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
-                            <button onClick={()=>setType('persistent')} className={`flex-1 py-2 text-[11px] font-black rounded-lg ${type==='persistent'?'bg-slate-800 text-cyan-400 shadow-inner':'text-slate-600'}`}>{lang === 'ja' ? 'ファイル (File)' : 'FILE'}</button>
-                            <button onClick={()=>setType('volatile')} className={`flex-1 py-2 text-[11px] font-black rounded-lg ${type==='volatile'?'bg-slate-800 text-orange-400 shadow-inner':'text-slate-600'}`}>{lang === 'ja' ? 'タスク (Task)' : 'TASK'}</button>
-                          </div>
-                          <div className="flex gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
-                            {['1','2','3'].map(w => (<button key={w} onClick={()=>setWeight(w)} className={`flex-1 py-2 text-[11px] font-black rounded-lg ${weight===w?'bg-slate-800 text-white shadow-inner':'text-slate-600'}`}>{w==='1'?'小':w==='2'?'中':'大'}</button>))}
-                          </div>
-                        </div>
-                        <div className="space-y-3">
-                          <label className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Schedule</label>
-                          <div className="flex gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
-                            {['once','daily','weekly','monthly'].map(f => (<button key={f} onClick={()=>handleFreqChange(f)} className={`flex-1 py-2 text-[10px] sm:text-[11px] font-black rounded-lg ${freq===f?'bg-slate-800 text-white shadow-inner':'text-slate-600'}`}>{f.toUpperCase()}</button>))}
-                          </div>
-                          
-                          {/* ✨ 修正: weekly または monthly の時にN入力欄を表示 */}
-                          {(freq === 'weekly' || freq === 'monthly') && (
-                            <div className="flex items-center justify-between mt-2 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2">
-                               <span className="text-[10px] font-black text-slate-500 tracking-widest">EVERY</span>
-                               <div className="flex items-center gap-2">
-                                 <input type="number" min="1" max="99" value={intervalVal} onChange={e=>setIntervalVal(e.target.value)} className="w-12 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-sm text-indigo-400 font-bold outline-none text-center" />
-                                 <span className="text-[10px] font-black text-slate-500 tracking-widest">{freq === 'weekly' ? 'WEEKS' : 'MONTHS'}</span>
-                               </div>
-                            </div>
-                          )}
+          <main className="flex-1 p-4 max-w-7xl mx-auto w-full space-y-6">
+            {activeTab === 'canvas' && (
+              <>
+                {isInputFocused && (
+                  <div className="fixed inset-0 z-30" onClick={() => setIsInputFocused(false)}></div>
+                )}
+                
+                <div className={`relative z-40 bg-slate-900/50 rounded-[2rem] border transition-all duration-300 overflow-hidden max-w-3xl mx-auto ${isInputFocused ? 'border-indigo-500/50 shadow-2xl backdrop-blur-md bg-slate-900/90' : 'border-slate-900 shadow-lg'}`}>
+                  <div className="flex items-center px-4 sm:px-6 py-4">
+                    <input 
+                      type="text" 
+                      value={title} 
+                      onChange={e=>setTitle(e.target.value)} 
+                      onFocus={()=>setIsInputFocused(true)}
+                      placeholder={t.placeholder}
+                      className="bg-transparent flex-1 text-base sm:text-lg font-bold outline-none placeholder:text-slate-700 w-full"
+                      onKeyPress={e => e.key === 'Enter' && addParentTask()}
+                    />
+                    <button onClick={() => addParentTask()} className="ml-2 sm:ml-4 bg-indigo-600 text-white px-4 sm:px-6 py-2 rounded-2xl font-black text-xs hover:bg-indigo-500 active:scale-95 transition-all whitespace-nowrap">
+                      {t.add}
+                    </button>
+                  </div>
+                  
+                  {isInputFocused && (
+                    <div className="px-6 pb-6 space-y-4 animate-in slide-in-from-top-2 border-t border-slate-800/50 mt-2 pt-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <label className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Type & Size</label>
+                          <div className="flex gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                            <button onClick={()=>setType('persistent')} className={`flex-1 py-2 text-[11px] font-black rounded-lg ${type==='persistent'?'bg-slate-800 text-cyan-400 shadow-inner':'text-slate-600'}`}>{lang === 'ja' ? 'ファイル (File)' : 'FILE'}</button>
+                            <button onClick={()=>setType('volatile')} className={`flex-1 py-2 text-[11px] font-black rounded-lg ${type==='volatile'?'bg-slate-800 text-orange-400 shadow-inner':'text-slate-600'}`}>{lang === 'ja' ? 'タスク (Task)' : 'TASK'}</button>
+                          </div>
+                          <div className="flex gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                            {['1','2','3'].map(w => (<button key={w} onClick={()=>setWeight(w)} className={`flex-1 py-2 text-[11px] font-black rounded-lg ${weight===w?'bg-slate-800 text-white shadow-inner':'text-slate-600'}`}>{w==='1'?'小':w==='2'?'中':'大'}</button>))}
+                          </div>
+                        </div>
+                        <div className="space-y-3">
+                          <label className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Schedule</label>
+                          <div className="flex gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                            {['once','daily','weekly','monthly'].map(f => (<button key={f} onClick={()=>handleFreqChange(f)} className={`flex-1 py-2 text-[10px] sm:text-[11px] font-black rounded-lg ${freq===f?'bg-slate-800 text-white shadow-inner':'text-slate-600'}`}>{f.toUpperCase()}</button>))}
+                          </div>
+                          
+                          {/* ✨ 修正: weekly または monthly の時にN入力欄を表示 */}
+                          {(freq === 'weekly' || freq === 'monthly') && (
+                            <div className="flex items-center justify-between mt-2 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2">
+                               <span className="text-[10px] font-black text-slate-500 tracking-widest">EVERY</span>
+                               <div className="flex items-center gap-2">
+                                 <input type="number" min="1" max="99" value={intervalVal} onChange={e=>setIntervalVal(e.target.value)} className="w-12 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-sm text-indigo-400 font-bold outline-none text-center" />
+                                 <span className="text-[10px] font-black text-slate-500 tracking-widest">{freq === 'weekly' ? 'WEEKS' : 'MONTHS'}</span>
+                               </div>
+                            </div>
+                          )}
 
-                          {freq === 'once' && <input type="date" value={scheduledDate} onChange={e=>setScheduledDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-indigo-400 font-bold outline-none mt-2" />}
-                          {freq === 'weekly' && (
-                            <div className="flex justify-between mt-2">
-                              {['日','月','火','水','木','金','土'].map((d,i) => (<button key={i} onClick={()=>setSelectedDays(prev=>prev.includes(i)?prev.filter(x=>x!==i):[...prev,i])} className={`w-8 h-8 rounded-full text-[10px] font-black border ${selectedDays.includes(i)?'bg-indigo-600 border-indigo-400 text-white':'border-slate-800 text-slate-500'}`}>{d}</button>))}
-                            </div>
-                          )}
-                          {freq === 'monthly' && (
-                            <div className="grid grid-cols-7 gap-1 mt-2">
-                              {[...Array(31)].map((_, i) => { 
-                                const d=i+1; const isS = selectedDates.includes(d); 
-                                return (<button key={d} onClick={()=>setSelectedDates(p=>isS?p.filter(x=>x!==d):[...p,d])} className={`text-[9px] py-1.5 rounded-lg border ${isS?'bg-indigo-600 border-indigo-400 text-white shadow-md':'border-slate-800 text-slate-600'}`}>{d}</button>);
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex justify-end pt-2">
-                         <button onClick={()=>setIsInputFocused(false)} className="text-[10px] text-slate-500 hover:text-white uppercase font-black">Close</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                          {freq === 'once' && <input type="date" value={scheduledDate} onChange={e=>setScheduledDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-indigo-400 font-bold outline-none mt-2" />}
+                          {freq === 'weekly' && (
+                            <div className="flex justify-between mt-2">
+                              {['日','月','火','水','木','金','土'].map((d,i) => (<button key={i} onClick={()=>setSelectedDays(prev=>prev.includes(i)?prev.filter(x=>x!==i):[...prev,i])} className={`w-8 h-8 rounded-full text-[10px] font-black border ${selectedDays.includes(i)?'bg-indigo-600 border-indigo-400 text-white':'border-slate-800 text-slate-500'}`}>{d}</button>))}
+                            </div>
+                          )}
+                          {freq === 'monthly' && (
+                            <div className="grid grid-cols-7 gap-1 mt-2">
+                              {[...Array(31)].map((_, i) => { 
+                                const d=i+1; const isS = selectedDates.includes(d); 
+                                return (<button key={d} onClick={()=>setSelectedDates(p=>isS?p.filter(x=>x!==d):[...p,d])} className={`text-[9px] py-1.5 rounded-lg border ${isS?'bg-indigo-600 border-indigo-400 text-white shadow-md':'border-slate-800 text-slate-600'}`}>{d}</button>);
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex justify-end pt-2">
+                         <button onClick={()=>setIsInputFocused(false)} className="text-[10px] text-slate-500 hover:text-white uppercase font-black">Close</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
-                <div className="flex justify-between items-center w-full px-2 max-w-3xl mx-auto">
-                  <span className="text-xs opacity-50">Zoom</span>
-                  <button onClick={()=>setIsEditMode(!isEditMode)} className={`text-[10px] px-3 py-1.5 rounded-full border border-slate-800 transition-all ${isEditMode ? 'bg-orange-500/20 text-orange-400 border-orange-500/50' : 'text-slate-500'} font-black uppercase tracking-widest`}>
-                     {isEditMode ? t.full : t.today}
-                  </button>
-                </div>
+                <div className="flex justify-between items-center w-full px-2 max-w-3xl mx-auto">
+                  <span className="text-xs opacity-50">Zoom</span>
+                  <button onClick={()=>setIsEditMode(!isEditMode)} className={`text-[10px] px-3 py-1.5 rounded-full border border-slate-800 transition-all ${isEditMode ? 'bg-orange-500/20 text-orange-400 border-orange-500/50' : 'text-slate-500'} font-black uppercase tracking-widest`}>
+                     {isEditMode ? t.full : t.today}
+                  </button>
+                </div>
 
-                <div id="canvas-root" ref={canvasRef} className="grid gap-2 sm:gap-3 grid-flow-dense auto-rows-min pb-24" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${zoom}px, 1fr))` }}>
-                  {canvasTasks.map(task => {
-                    const progress = task.subTasks.length > 0 ? (task.subTasks.filter(st => st.completed).length / task.subTasks.length) * 100 : 0;
-                    const isFile = task.type === 'persistent';
-                    const w = task.weight;
-                    const daysSince = (Date.now() - task.lastUpdated) / (1000 * 60 * 60 * 24);
-                    
-                    return (
-                      <div 
-                        key={task.id} 
-                        onClick={() => task.type === 'volatile' && task.subTasks.length === 0 ? archiveTaskAction(task) : setActiveTaskId(task.id)}
-                        onContextMenu={(e)=>{e.preventDefault(); archiveTaskAction(task);}}
-                        style={{ gridColumn: `span ${w > 1 ? 2 : 1}`, gridRow: `span ${w === 3 ? 2 : 1}`, aspectRatio: w === 2 ? '2/1' : '1/1' }}
-                        className={`task-card relative rounded-2xl overflow-hidden border ${isFile ? 'border-cyan-500/20 bg-cyan-950/10' : 'border-slate-800 bg-slate-900/40'} hover:border-indigo-500 cursor-pointer shadow-lg group`}
-                      >
-                        <div className={`absolute bottom-0 left-0 w-full ${isFile?'bg-cyan-500/20':'bg-indigo-500/20'} transition-all duration-700`} style={{height: `${progress}%`}} />
-                        {daysSince >= 3 && <div className="absolute inset-0 crack-overlay opacity-40 pointer-events-none" />}
-                        
-                        <div className={`absolute inset-0 flex flex-col justify-between z-10 pointer-events-none ${zoom < 80 ? 'p-1.5' : 'p-3'}`}>
-                          <div className={`flex justify-between items-start opacity-50 origin-top-left ${zoom < 80 ? 'scale-50' : 'scale-75'}`}>
-                            {/* ✨ 修正: weeklyの場合も設定したNの数値を表示 */}
-                            <span className={`text-[8px] font-black uppercase ${isFile?'text-cyan-400':'text-slate-400'}`}>{isFile?'FILE':'TASK'}・{task.freq === 'monthly' ? `EVERY ${task.interval || 1}M` : task.freq === 'weekly' ? `EVERY ${task.interval || 1}W` : task.freq}</span>
-                            {isFile && <span className="text-[8px] font-black text-cyan-500">P{task.phase}</span>}
-                          </div>
-                          
-                          <div className="flex-1 flex items-center justify-center py-1">
-                            <h2 className={`font-black leading-tight text-center break-all transition-colors group-hover:text-white ${zoom < 60 ? 'text-[8px]' : zoom < 100 ? 'text-[11px]' : 'text-[13px]'}`}>
-                              {task.title}
-                            </h2>
-                          </div>
+                <div id="canvas-root" ref={canvasRef} className="grid gap-2 sm:gap-3 grid-flow-dense auto-rows-min pb-24" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${zoom}px, 1fr))` }}>
+                  {canvasTasks.map(task => {
+                    const progress = task.subTasks.length > 0 ? (task.subTasks.filter(st => st.completed).length / task.subTasks.length) * 100 : 0;
+                    const isFile = task.type === 'persistent';
+                    const w = task.weight;
+                    const daysSince = (Date.now() - task.lastUpdated) / (1000 * 60 * 60 * 24);
+                    
+                    return (
+                      <div 
+                        key={task.id} 
+                        onClick={() => task.type === 'volatile' && task.subTasks.length === 0 ? archiveTaskAction(task) : setActiveTaskId(task.id)}
+                        onContextMenu={(e)=>{e.preventDefault(); archiveTaskAction(task);}}
+                        style={{ gridColumn: `span ${w > 1 ? 2 : 1}`, gridRow: `span ${w === 3 ? 2 : 1}`, aspectRatio: w === 2 ? '2/1' : '1/1' }}
+                        className={`task-card relative rounded-2xl overflow-hidden border ${isFile ? 'border-cyan-500/20 bg-cyan-950/10' : 'border-slate-800 bg-slate-900/40'} hover:border-indigo-500 cursor-pointer shadow-lg group`}
+                      >
+                        <div className={`absolute bottom-0 left-0 w-full ${isFile?'bg-cyan-500/20':'bg-indigo-500/20'} transition-all duration-700`} style={{height: `${progress}%`}} />
+                        {daysSince >= 3 && <div className="absolute inset-0 crack-overlay opacity-40 pointer-events-none" />}
+                        
+                        <div className={`absolute inset-0 flex flex-col justify-between z-10 pointer-events-none ${zoom < 80 ? 'p-1.5' : 'p-3'}`}>
+                          <div className={`flex justify-between items-start opacity-50 origin-top-left ${zoom < 80 ? 'scale-50' : 'scale-75'}`}>
+                            {/* ✨ 修正: weeklyの場合も設定したNの数値を表示 */}
+                            <span className={`text-[8px] font-black uppercase ${isFile?'text-cyan-400':'text-slate-400'}`}>{isFile?'FILE':'TASK'}・{task.freq === 'monthly' ? `EVERY ${task.interval || 1}M` : task.freq === 'weekly' ? `EVERY ${task.interval || 1}W` : task.freq}</span>
+                            {isFile && <span className="text-[8px] font-black text-cyan-500">P{task.phase}</span>}
+                          </div>
+                          
+                          <div className="flex-1 flex items-center justify-center py-1">
+                            <h2 className={`font-black leading-tight text-center break-all transition-colors group-hover:text-white ${zoom < 60 ? 'text-[8px]' : zoom < 100 ? 'text-[11px]' : 'text-[13px]'}`}>
+                              {task.title}
+                            </h2>
+                          </div>
 
-                          <div className="flex justify-between items-end">
-                             <div className="flex flex-col">
-                               {zoom >= 100 && task.scheduledDate && task.freq === 'once' && <span className="text-[7px] font-mono text-cyan-400/40 font-black">📅{task.scheduledDate.slice(5)}</span>}
-                             </div>
-                             <span className={`font-mono font-black opacity-30 ${zoom < 80 ? 'text-[7px]' : 'text-[9px]'}`}>{Math.round(progress)}%</span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            )}
+                          <div className="flex justify-between items-end">
+                             <div className="flex flex-col">
+                               {zoom >= 100 && task.scheduledDate && task.freq === 'once' && <span className="text-[7px] font-mono text-cyan-400/40 font-black">📅{task.scheduledDate.slice(5)}</span>}
+                             </div>
+                             <span className={`font-mono font-black opacity-30 ${zoom < 80 ? 'text-[7px]' : 'text-[9px]'}`}>{Math.round(progress)}%</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
 
-            {activeTab === 'archive' && (
-              <div className="relative animate-in fade-in duration-500">
-                <div className="flex justify-between items-center mb-6 px-2">
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">The Archive of Masterpieces</span>
-                  <div className="flex gap-2">
-                    <button onClick={importMemory} className="text-[10px] bg-slate-900 border border-slate-800 px-4 py-2 rounded-full text-indigo-400 font-black hover:bg-slate-800 active:scale-95 transition-transform">注入</button>
-                    <button onClick={exportMemory} className="text-[10px] bg-indigo-600 border border-indigo-500 px-4 py-2 rounded-full text-white font-black hover:bg-indigo-500 active:scale-95 shadow-lg shadow-indigo-500/20 transition-transform">抽出</button>
-                  </div>
-                </div>
-                <div className="relative w-full h-[70vh] bg-slate-900/10 rounded-[2.5rem] border-4 border-dashed border-slate-900/50 overflow-hidden shadow-inner backdrop-blur-sm">
-                  {archivedTasks.map((task, i) => (
-                    <div key={task.id} onClick={() => setActiveTaskId(task.id)} className={`absolute p-4 rounded-2xl border border-white/5 backdrop-blur-md flex items-center justify-center text-center shadow-2xl cursor-pointer hover:scale-110 hover:rotate-0 transition-all ${showArchiveAnima?'animate-slap':'opacity-0'}`} style={{left:`${task.pos.x}%`, top:`${task.pos.y}%`, width:`${95+task.weight*30}px`, height:`${95+task.weight*30}px`, '--rot':`${task.pos.rot}deg`, backgroundColor:task.phase>=3?'rgba(245,158,11,0.1)':'rgba(79,70,229,0.1)', animationDelay:`${i*0.06}s`, zIndex: i}}>
-                      <div className="flex flex-col items-center">
-                        <h3 className="text-[10px] font-black uppercase text-white/80 drop-shadow-lg leading-tight line-clamp-2">{task.title}</h3>
-                        <span className="text-[8px] font-black text-amber-500 mt-2 tracking-widest">LV.{task.phase}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </main>
+            {activeTab === 'archive' && (
+              <div className="relative animate-in fade-in duration-500">
+                <div className="flex justify-between items-center mb-6 px-2">
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">The Archive of Masterpieces</span>
+                  <div className="flex gap-2">
+                    <button onClick={importMemory} className="text-[10px] bg-slate-900 border border-slate-800 px-4 py-2 rounded-full text-indigo-400 font-black hover:bg-slate-800 active:scale-95 transition-transform">注入</button>
+                    <button onClick={exportMemory} className="text-[10px] bg-indigo-600 border border-indigo-500 px-4 py-2 rounded-full text-white font-black hover:bg-indigo-500 active:scale-95 shadow-lg shadow-indigo-500/20 transition-transform">抽出</button>
+                  </div>
+                </div>
+                <div className="relative w-full h-[70vh] bg-slate-900/10 rounded-[2.5rem] border-4 border-dashed border-slate-900/50 overflow-hidden shadow-inner backdrop-blur-sm">
+                  {archivedTasks.map((task, i) => (
+                    <div key={task.id} onClick={() => setActiveTaskId(task.id)} className={`absolute p-4 rounded-2xl border border-white/5 backdrop-blur-md flex items-center justify-center text-center shadow-2xl cursor-pointer hover:scale-110 hover:rotate-0 transition-all ${showArchiveAnima?'animate-slap':'opacity-0'}`} style={{left:`${task.pos.x}%`, top:`${task.pos.y}%`, width:`${95+task.weight*30}px`, height:`${95+task.weight*30}px`, '--rot':`${task.pos.rot}deg`, backgroundColor:task.phase>=3?'rgba(245,158,11,0.1)':'rgba(79,70,229,0.1)', animationDelay:`${i*0.06}s`, zIndex: i}}>
+                      <div className="flex flex-col items-center">
+                        <h3 className="text-[10px] font-black uppercase text-white/80 drop-shadow-lg leading-tight line-clamp-2">{task.title}</h3>
+                        <span className="text-[8px] font-black text-amber-500 mt-2 tracking-widest">LV.{task.phase}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </main>
 
-          {/* --- 詳細モーダル --- */}
-          {activeTask && (
-            <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-[150] flex items-center justify-center p-4 transition-all duration-300 animate-in fade-in" onClick={() => {setActiveTaskId(null); setIsEditingTitle(false);}}>
-              <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in duration-200" onClick={e=>e.stopPropagation()}>
-                <div className="p-8 border-b border-slate-800 bg-gradient-to-b from-slate-800/30 to-transparent">
-                  <div className="flex justify-between items-start gap-4">
-                    <div className="flex-1">
-                      {isEditingTitle ? (
-                        <input autoFocus value={activeTask.title} className="bg-slate-950 border border-indigo-500 rounded-lg px-2 py-1 text-xl font-black w-full outline-none" onChange={e => setTasks(tasks.map(t=>t.id===activeTask.id?{...t, title: e.target.value}:t))} onBlur={()=>setIsEditingTitle(false)} onKeyPress={e=>e.key==='Enter' && setIsEditingTitle(false)}/>
-                      ) : (
-                        <h2 className="font-black text-2xl leading-tight cursor-text hover:text-indigo-400 transition-colors" onClick={()=>setIsEditingTitle(true)}>{activeTask.title}</h2>
-                      )}
-                      <p className="text-[10px] text-slate-500 mt-3 font-black uppercase tracking-[0.2em]">{activeTask.isArchived ? 'ARCHIVED' : activeTask.type==='persistent'? `Phase ${activeTask.phase} File` : 'Volatile Task'}</p>
-                    </div>
-                    <button onClick={()=>{setActiveTaskId(null); setIsEditingTitle(false);}} className="text-slate-600 hover:text-white text-3xl leading-none transition-colors">&times;</button>
-                  </div>
-                </div>
-                <div className="p-8 space-y-3 max-h-[50vh] overflow-y-auto no-scrollbar">
-                  {activeTask.subTasks.map(sub => (
-                    <div key={sub.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${activeTask.isArchived ? 'bg-slate-900/50 border-transparent opacity-60' : 'bg-slate-950/50 border-slate-800 group hover:border-indigo-500/40 shadow-sm'}`}>
-                      <div className="flex items-center gap-4 flex-1 cursor-pointer" onClick={()=>{
-                        if(activeTask.isArchived) return;
-                        setTasks(tasks.map(t => t.id === activeTask.id ? {...t, lastUpdated: Date.now(), subTasks: t.subTasks.map(st => st.id === sub.id ? {...st, completed: !st.completed} : st)} : t));
-                      }}>
-                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${sub.completed?'bg-indigo-500 border-indigo-500':'border-slate-700'}`}>
-                          {sub.completed && <span className="text-slate-950 text-[10px] font-black">✓</span>}
-                        </div>
-                        <input onClick={e => e.stopPropagation()} className={`bg-transparent border-none outline-none text-sm font-bold flex-1 ${sub.completed?'line-through text-slate-600':'text-slate-200'}`} value={sub.text} onChange={e => setTasks(tasks.map(t=>t.id===activeTask.id?{...t, subTasks: t.subTasks.map(st=>st.id===sub.id?{...st, text: e.target.value}:st)}:t))} disabled={activeTask.isArchived}/>
-                      </div>
-                      {!activeTask.isArchived && <button onClick={(e)=>{e.stopPropagation(); setTasks(tasks.map(t=>t.id===activeTask.id?{...t, subTasks:t.subTasks.filter(s=>s.id!==sub.id)}:t))}} className="ml-2 text-slate-700 hover:text-red-500 transition-all text-xl">&times;</button>}
-                    </div>
-                  ))}
-                  {!activeTask.isArchived && (
-                    <input type="text" value={newSubText} onChange={e=>setNewSubText(e.target.value)} placeholder="具体的アクション..." className="w-full bg-slate-950/50 border border-slate-800 rounded-2xl px-5 py-4 text-sm focus:ring-1 ring-indigo-500 outline-none mt-2 placeholder:text-slate-700 font-bold" onKeyPress={e=>{if(e.key==='Enter' && newSubText){setTasks(tasks.map(t=>t.id===activeTask.id?{...t, subTasks:[...t.subTasks,{id:Date.now().toString(),text:newSubText,completed:false}]}:t)); setNewSubText('');}}}/>
-                  )}
-                </div>
-                <div className="p-6 bg-slate-950/30 flex justify-between px-10">
-                  <button onClick={()=>{if(confirm('完全に消去しますか？')){setTasks(tasks.filter(t=>t.id!==activeTask.id)); setActiveTaskId(null);}}} className="text-[11px] font-black text-red-900 hover:text-red-500 transition-colors uppercase tracking-widest">Delete</button>
-                  <div className="flex gap-2">
-                    {activeTask.type === 'persistent' && !activeTask.isArchived && activeTask.subTasks.length > 0 && activeTask.subTasks.every(s=>s.completed) && (
-                      <button onClick={()=>levelUpTask(activeTask.id)} className="bg-amber-600 text-white text-[11px] px-5 py-2.5 rounded-xl font-black uppercase hover:bg-amber-500 shadow-lg shadow-amber-900/20 active:scale-95 transition-all">Phase Up</button>
-                    )}
-                    {!activeTask.isArchived && activeTask.subTasks.length > 0 && activeTask.subTasks.every(s=>s.completed) && (
-                      <button onClick={()=>archiveTaskAction(activeTask)} className="bg-white text-slate-950 text-[11px] px-5 py-2.5 rounded-xl font-black hover:bg-slate-200 shadow-lg active:scale-95 transition-all">Archive</button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* --- 詳細モーダル --- */}
+          {activeTask && (
+            <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-[150] flex items-center justify-center p-4 transition-all duration-300 animate-in fade-in" onClick={() => {setActiveTaskId(null); setIsEditingTitle(false);}}>
+              <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in duration-200" onClick={e=>e.stopPropagation()}>
+                <div className="p-8 border-b border-slate-800 bg-gradient-to-b from-slate-800/30 to-transparent">
+                  <div className="flex justify-between items-start gap-4">
+                    <div className="flex-1">
+                      {isEditingTitle ? (
+                        <input autoFocus value={activeTask.title} className="bg-slate-950 border border-indigo-500 rounded-lg px-2 py-1 text-xl font-black w-full outline-none" onChange={e => setTasks(tasks.map(t=>t.id===activeTask.id?{...t, title: e.target.value}:t))} onBlur={()=>setIsEditingTitle(false)} onKeyPress={e=>e.key==='Enter' && setIsEditingTitle(false)}/>
+                      ) : (
+                        <h2 className="font-black text-2xl leading-tight cursor-text hover:text-indigo-400 transition-colors" onClick={()=>setIsEditingTitle(true)}>{activeTask.title}</h2>
+                      )}
+                      <p className="text-[10px] text-slate-500 mt-3 font-black uppercase tracking-[0.2em]">{activeTask.isArchived ? 'ARCHIVED' : activeTask.type==='persistent'? `Phase ${activeTask.phase} File` : 'Volatile Task'}</p>
+                    </div>
+                    <button onClick={()=>{setActiveTaskId(null); setIsEditingTitle(false);}} className="text-slate-600 hover:text-white text-3xl leading-none transition-colors">&times;</button>
+                  </div>
+                </div>
+                <div className="p-8 space-y-3 max-h-[50vh] overflow-y-auto no-scrollbar">
+                  {activeTask.subTasks.map(sub => (
+                    <div key={sub.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${activeTask.isArchived ? 'bg-slate-900/50 border-transparent opacity-60' : 'bg-slate-950/50 border-slate-800 group hover:border-indigo-500/40 shadow-sm'}`}>
+                      <div className="flex items-center gap-4 flex-1 cursor-pointer" onClick={()=>{
+                        if(activeTask.isArchived) return;
+                        setTasks(tasks.map(t => t.id === activeTask.id ? {...t, lastUpdated: Date.now(), subTasks: t.subTasks.map(st => st.id === sub.id ? {...st, completed: !st.completed} : st)} : t));
+                      }}>
+                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${sub.completed?'bg-indigo-500 border-indigo-500':'border-slate-700'}`}>
+                          {sub.completed && <span className="text-slate-950 text-[10px] font-black">✓</span>}
+                        </div>
+                        <input onClick={e => e.stopPropagation()} className={`bg-transparent border-none outline-none text-sm font-bold flex-1 ${sub.completed?'line-through text-slate-600':'text-slate-200'}`} value={sub.text} onChange={e => setTasks(tasks.map(t=>t.id===activeTask.id?{...t, subTasks: t.subTasks.map(st=>st.id===sub.id?{...st, text: e.target.value}:st)}:t))} disabled={activeTask.isArchived}/>
+                      </div>
+                      {!activeTask.isArchived && <button onClick={(e)=>{e.stopPropagation(); setTasks(tasks.map(t=>t.id===activeTask.id?{...t, subTasks:t.subTasks.filter(s=>s.id!==sub.id)}:t))}} className="ml-2 text-slate-700 hover:text-red-500 transition-all text-xl">&times;</button>}
+                    </div>
+                  ))}
+                  {!activeTask.isArchived && (
+                    <input type="text" value={newSubText} onChange={e=>setNewSubText(e.target.value)} placeholder="具体的アクション..." className="w-full bg-slate-950/50 border border-slate-800 rounded-2xl px-5 py-4 text-sm focus:ring-1 ring-indigo-500 outline-none mt-2 placeholder:text-slate-700 font-bold" onKeyPress={e=>{if(e.key==='Enter' && newSubText){setTasks(tasks.map(t=>t.id===activeTask.id?{...t, subTasks:[...t.subTasks,{id:Date.now().toString(),text:newSubText,completed:false}]}:t)); setNewSubText('');}}}/>
+                  )}
+                </div>
+                <div className="p-6 bg-slate-950/30 flex justify-between px-10">
+                  <button onClick={()=>{if(confirm('完全に消去しますか？')){setTasks(tasks.filter(t=>t.id!==activeTask.id)); setActiveTaskId(null);}}} className="text-[11px] font-black text-red-900 hover:text-red-500 transition-colors uppercase tracking-widest">Delete</button>
+                  <div className="flex gap-2">
+                    {activeTask.type === 'persistent' && !activeTask.isArchived && activeTask.subTasks.length > 0 && activeTask.subTasks.every(s=>s.completed) && (
+                      <button onClick={()=>levelUpTask(activeTask.id)} className="bg-amber-600 text-white text-[11px] px-5 py-2.5 rounded-xl font-black uppercase hover:bg-amber-500 shadow-lg shadow-amber-900/20 active:scale-95 transition-all">Phase Up</button>
+                    )}
+                    {!activeTask.isArchived && activeTask.subTasks.length > 0 && activeTask.subTasks.every(s=>s.completed) && (
+                      <button onClick={()=>archiveTaskAction(activeTask)} className="bg-white text-slate-950 text-[11px] px-5 py-2.5 rounded-xl font-black hover:bg-slate-200 shadow-lg active:scale-95 transition-all">Archive</button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
-          {/* 使い方ポップアップ */}
-          {showHowto && (
-            <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-[200] flex items-center justify-center p-4 animate-in fade-in" onClick={() => setShowHowto(false)}>
-              <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-sm overflow-hidden shadow-2xl p-8" onClick={e=>e.stopPropagation()}>
-                <h2 className="text-2xl font-black text-indigo-400 mb-6">🚀 {lang === 'ja' ? '使い方' : 'How to use'}</h2>
-                <div className="text-sm text-slate-300 space-y-4 max-h-[50vh] overflow-y-auto no-scrollbar">
+          {/* 使い方ポップアップ */}
+          {showHowto && (
+            <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-[200] flex items-center justify-center p-4 animate-in fade-in" onClick={() => setShowHowto(false)}>
+              <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-sm overflow-hidden shadow-2xl p-8" onClick={e=>e.stopPropagation()}>
+                <h2 className="text-2xl font-black text-indigo-400 mb-6">🚀 {lang === 'ja' ? '使い方' : 'How to use'}</h2>
+                <div className="text-sm text-slate-300 space-y-4 max-h-[50vh] overflow-y-auto no-scrollbar">
                   {lang === 'ja' ? (
                     <>
-                      <div><p className="font-black text-white">■ 基本操作</p><p className="text-xs mt-1">「生成」からタスクを作成。タイルをクリックで詳細を開き、右クリック（スマホは長押し）で強制アーカイブ。</p></div>
-                      <div><p className="font-black text-white">■ TASKとFILE</p><p className="text-xs mt-1">【Task】単発の用事。サブタスクがなければワンタップで一撃完了。<br/>【File】長期プロジェクト。サブタスクを全消化するとPhase(LV)が上がります。</p></div>
-                      {/* ✨ 修正: N週間にも対応した解説 */}
-                      <div><p className="font-black text-white">■ スケジュール</p><p className="text-xs mt-1">WEEKLY/MONTHLY（N週/Nヶ月ごと）の設定は、作成時から起算して指定した周期で再出現します（N=1なら毎週/毎月）。</p></div>
-                      <div><p className="font-black text-white">■ スマホアプリ化</p><p className="text-xs mt-1">ブラウザの共有メニューから「ホーム画面に追加」でフルスクリーン動作します。</p></div>
+                      <div><p className="font-black text-white">■ 基本操作</p><p className="text-xs mt-1">「生成」からタスクを作成。タイルをクリックで詳細を開き、右クリック（スマホは長押し）で強制アーカイブ。</p></div>
+                      <div><p className="font-black text-white">■ TASKとFILE</p><p className="text-xs mt-1">【Task】単発の用事。サブタスクがなければワンタップで一撃完了。<br/>【File】長期プロジェクト。サブタスクを全消化するとPhase(LV)が上がります。</p></div>
+                      <div><p className="font-black text-white">■ スケジュール</p><p className="text-xs mt-1">WEEKLY/MONTHLY（N週/Nヶ月ごと）の設定は、作成時から起算して指定した周期で再出現します（N=1なら毎週/毎月）。</p></div>
+                      <div><p className="font-black text-white">■ スマホアプリ化</p><p className="text-xs mt-1">ブラウザの共有メニューから「ホーム画面に追加」でフルスクリーン動作します。</p></div>
                     </>
                   ) : (
                     <>
@@ -533,20 +532,20 @@
                       <div><p className="font-black text-white">■ Mobile App (PWA)</p><p className="text-xs mt-1">Use "Add to Home Screen" from your browser's share menu for full-screen mode.</p></div>
                     </>
                   )}
-                </div>
-                <div className="mt-8 text-right">
-                  <button onClick={() => setShowHowto(false)} className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-black text-xs shadow-lg active:scale-95 transition-all">OK</button>
-                </div>
-              </div>
-            </div>
-          )}
+                </div>
+                <div className="mt-8 text-right">
+                  <button onClick={() => setShowHowto(false)} className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-black text-xs shadow-lg active:scale-95 transition-all">OK</button>
+                </div>
+              </div>
+            </div>
+          )}
 
-        </div>
-      );
-    }
+        </div>
+      );
+    }
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
-  </script>
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
 </body>
 </html>
