@@ -233,7 +233,7 @@
         });
       };
 
-      // ✨ 修正: 親のゲージは「完了した子タスクの割合」で計算するように変更
+      // 親のゲージは「完了した子タスクの割合」で計算するように変更
       const calculateProgress = (task) => {
         if (!task.subTasks || task.subTasks.length === 0) return 0;
         let total = task.subTasks.length;
@@ -557,13 +557,11 @@
                         const hasChecklists = sub.checklists && sub.checklists.length > 0;
                         const isSubCompleted = hasChecklists ? sub.checklists.every(c=>c.completed) : sub.completed;
                         
-                        // ✨ 追加: 孫タスクの進捗割合を計算
                         const checklistProgress = hasChecklists ? (sub.checklists.filter(c=>c.completed).length / sub.checklists.length) * 100 : 0;
                         
                         return (
                           <div key={sub.id} className={`relative flex items-center justify-between p-4 rounded-2xl border transition-all overflow-hidden ${activeTask.isArchived ? 'bg-slate-900/50 border-transparent opacity-60' : 'bg-slate-950/50 border-slate-800 group hover:border-indigo-500/40 shadow-sm'}`}>
                             
-                            {/* ✨ 追加: 孫タスクの進捗を子タスクの背景ゲージとして表示 */}
                             {hasChecklists && (
                               <div className="absolute top-0 left-0 h-full bg-indigo-500/10 transition-all duration-500 pointer-events-none" style={{ width: `${checklistProgress}%` }} />
                             )}
@@ -655,7 +653,7 @@
             </div>
           )}
 
-          {/* 使い方ポップアップ */}
+          {/* ✨ 修正: 使い方ポップアップ（完全網羅版） */}
           {showHowto && (
             <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-[200] flex items-center justify-center p-4 animate-in fade-in" onClick={() => setShowHowto(false)}>
               <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-sm overflow-hidden shadow-2xl p-8" onClick={e=>e.stopPropagation()}>
@@ -665,15 +663,21 @@
                     <>
                       <div><p className="font-black text-white">■ 基本操作</p><p className="text-xs mt-1">「生成」からタスクを作成。タイルをクリックで詳細を開き、右クリック（スマホは長押し）で強制アーカイブ。</p></div>
                       <div><p className="font-black text-white">■ TASKとFILE</p><p className="text-xs mt-1">【Task】単発の用事。サブタスクがなければワンタップで一撃完了。<br/>【File】長期プロジェクト。サブタスクを全消化するとPhase(LV)が上がります。</p></div>
-                      <div><p className="font-black text-white">■ スケジュール</p><p className="text-xs mt-1">WEEKLY/MONTHLY（N週/Nヶ月ごと）の設定は、作成時から起算して指定した周期で再出現します（N=1なら毎週/毎月）。</p></div>
-                      <div><p className="font-black text-white">■ スマホアプリ化</p><p className="text-xs mt-1">ブラウザの共有メニューから「ホーム画面に追加」でフルスクリーン動作します。</p></div>
+                      <div><p className="font-black text-white">■ ネスト構造（Task in Task）</p><p className="text-xs mt-1">詳細画面で子タスクを追加後、右端の「＞」を押すと孫タスク（チェックリスト）を作成可能。孫の進捗は子タスクの背景ゲージに、子の進捗はキャンバスの親タイルの背景ゲージに連動します。</p></div>
+                      <div><p className="font-black text-white">■ サイズと期間</p><p className="text-xs mt-1">【Size】S/M/Lでタイルの大きさが変化し、視覚的な重みを示します。<br/>【Schedule】[開始日]～[期限日]を設定可能。期限を過ぎると赤く警告されます。「TODAY」で今日を即入力できます。</p></div>
+                      <div><p className="font-black text-white">■ Fail（諦める勇気）</p><p className="text-xs mt-1">終わらなかったタスクは「Delete(完全消去)」するのではなく、「Fail」を押すことでグレーアウトして履歴に流せます。タスク負債の罪悪感を手放すための機能です。</p></div>
+                      <div><p className="font-black text-white">■ キャンバス表示の切り替え</p><p className="text-xs mt-1">上部の「Zoom」でタイルの大きさを一括変更。「TODAY ONLY」を「⚠️ FULL」に切り替えると、未来のタスクも含めた全てを俯瞰できます。</p></div>
+                      <div><p className="font-black text-white">■ スマホアプリ化 (PWA)</p><p className="text-xs mt-1">ブラウザの共有メニューから「ホーム画面に追加」でフルスクリーン動作します。完全オフラインで動作し、データは外部に送信されません。</p></div>
                     </>
                   ) : (
                     <>
                       <div><p className="font-black text-white">■ Basics</p><p className="text-xs mt-1">Create from "Create". Click a tile for details, right-click (or long-press) to force archive.</p></div>
                       <div><p className="font-black text-white">■ TASK vs FILE</p><p className="text-xs mt-1">[Task]: Single action. Clears instantly without sub-tasks.<br/>[File]: Multi-step project. Completing all sub-tasks triggers a Phase Up.</p></div>
-                      <div><p className="font-black text-white">■ Schedule</p><p className="text-xs mt-1">WEEKLY/MONTHLY settings re-appear based on the creation date interval. (N=1 means every week/month).</p></div>
-                      <div><p className="font-black text-white">■ Mobile App (PWA)</p><p className="text-xs mt-1">Use "Add to Home Screen" from your browser's share menu for full-screen mode.</p></div>
+                      <div><p className="font-black text-white">■ Task in Task (Nesting)</p><p className="text-xs mt-1">Add sub-tasks, then click "＞" to create grandchild checklists. Grandchild progress fills the sub-task background; sub-task progress fills the main canvas tile.</p></div>
+                      <div><p className="font-black text-white">■ Size & Schedule</p><p className="text-xs mt-1">[Size]: S/M/L changes tile dimensions for visual weighting.<br/>[Schedule]: Set [Start] ~ [Due] dates. Overdue tasks turn red. Use "TODAY" for quick input.</p></div>
+                      <div><p className="font-black text-white">■ Fail (Letting Go)</p><p className="text-xs mt-1">If you can't complete a task, don't "Delete" it—click "Fail". It archives as grayscale, removing the guilt of uncompleted task debt.</p></div>
+                      <div><p className="font-black text-white">■ Canvas Controls</p><p className="text-xs mt-1">Adjust tile size with "Zoom". Toggle "TODAY ONLY" to "⚠️ FULL" to see all future tasks at a glance.</p></div>
+                      <div><p className="font-black text-white">■ Mobile App (PWA)</p><p className="text-xs mt-1">Use "Add to Home Screen" from your browser's share menu. Runs 100% offline with zero data sent to external servers.</p></div>
                     </>
                   )}
                 </div>
